@@ -1,0 +1,12 @@
+{% extends "base.html" %} {% block content %}
+<div class="container">
+  <h2>Admin: Register New User</h2>
+  <form method="POST" action="{{ url_for('main.admin_register_user') }}">
+    {{ form.hidden_tag() }} {{ form.name.label }} {{ form.name }} {{
+    form.email.label }} {{ form.email }} {{ form.password.label }} {{
+    form.password }} {{ form.confirm_password.label }} {{ form.confirm_password
+    }}
+    <button type="submit" class="btn btn-primary mt-3">Register User</button>
+  </form>
+</div>
+{% endblock %}

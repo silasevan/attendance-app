@@ -1,0 +1,121 @@
+{% extends "base.html" %} {% block title %} Dashboard {% endblock %} {% block
+content %}
+<h1>Welcome, {{ current_user.name }}</h1>
+
+{% if record_today %}
+<p>
+  Today's Sign-In Time: {{ record_today.sign_in_time or "Not Signed In" }}<br />
+  {% if late_status is not none %} {% if late_status %}
+  <span class="text-danger">You are late!</span>
+  {% else %}
+  <span class="text-success">You are on time.</span>
+  {% endif %} {% endif %} Today's Sign-Out Time: {{ record_today.sign_out_time
+  or "Not Signed Out" }}
+</p>
+{% endif %}
+
+<form
+  method="POST"
+  action="{{ url_for('main.sign_in') }}"
+  style="display: inline"
+>
+  <input type="hidden" name="latitude" id="signInLatitude" />
+  <input type="hidden" name="longitude" id="signInLongitude" />
+  {% if not record_today or not record_today.sign_in_time %}
+  <button type="submit" class="btn btn-primary">Sign In</button>
+  {% endif %}
+</form>
+
+<form
+  method="POST"
+  action="{{ url_for('main.sign_out') }}"
+  style="display: inline"
+>
+  <input type="hidden" name="latitude" id="signOutLatitude" />
+  <input type="hidden" name="longitude" id="signOutLongitude" />
+  {% if record_today and record_today.sign_in_time and current_time >=
+  SIGN_OUT_START_TIME %}
+  <button type="submit" class="btn btn-warning">Sign Out</button>
+  {% endif %}
+</form>
+
+<h2>Attendance Records for the Month</h2>
+<table class="table">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Sign-In Time</th>
+      <th>Sign-Out Time</th>
+      <th>Geo-Location</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for record in records %}
+    <tr>
+      <td>{{ record.date }}</td>
+      <td>{{ record.sign_in_time or "Not Signed In" }}</td>
+      <td>{{ record.sign_out_time or "Not Signed Out" }}</td>
+      <td>{{ record.geo_location }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const signInForm = document.querySelector(
+      "form[action='{{ url_for('main.sign_in') }}']"
+    );
+    const signOutForm = document.querySelector(
+      "form[action='{{ url_for('main.sign_out') }}']"
+    );
+
+    function fetchGeolocationAndSubmit(event, form, latitudeId, longitudeId) {
+      event.preventDefault(); // Prevent the default form submission
+      navigator.geolocation.getCurrentPosition(
+        function (position) {
+          document.getElementById(latitudeId).value = position.coords.latitude;
+          document.getElementById(longitudeId).value =
+            position.coords.longitude;
+          console.log(
+            "Latitude:",
+            position.coords.latitude,
+            "Longitude:",
+            position.coords.longitude
+          ); // Debugging log
+          form.submit(); // Submit the form after setting coordinates
+        },
+        function (error) {
+          console.error("Error fetching geolocation:", error.message);
+          alert(
+            "Unable to fetch location. Please enable location services and try again."
+          );
+        }
+      );
+    }
+
+    if (signInForm) {
+      signInForm.addEventListener("submit", function (event) {
+        fetchGeolocationAndSubmit(
+          event,
+          signInForm,
+          "signInLatitude",
+          "signInLongitude"
+        );
+      });
+    }
+
+    if (signOutForm) {
+      signOutForm.addEventListener("submit", function (event) {
+        fetchGeolocationAndSubmit(
+          event,
+          signOutForm,
+          "signOutLatitude",
+          "signOutLongitude"
+        );
+      });
+    }
+  });
+</script>
+
+{% endblock %}

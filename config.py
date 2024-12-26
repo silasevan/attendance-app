@@ -11,9 +11,9 @@ class Config:
 
 
     MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')  # Default to example.com if not set
-    MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))  # Default to port 587 if not set
-    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true') == 'true'
-    MAIL_USE_SSL = os.environ.get('MAIL_USE_SSL', 'false').lower() == 'true'
+    MAIL_PORT = int(os.environ.get('MAIL_PORT', 465))  # Default to port 587 if not set
+    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'false').lower() == 'false'
+    MAIL_USE_SSL = os.environ.get('MAIL_USE_SSL', 'true').lower() == 'true'
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     ADMINS = [os.environ.get('MAIL_USERNAME')]

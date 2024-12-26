@@ -2,7 +2,7 @@ from flask import Blueprint,render_template, redirect, url_for, flash
 
 from flask_login import login_required, current_user,login_user,logout_user
 from .models import User
-from .forms import LoginForm, RegistrationForm,PasswordResetRequestForm
+from .forms import LoginForm, RegistrationForm,PasswordResetRequestForm,ResetPasswordForm
 from sqlalchemy.exc import IntegrityError
 from . import db
 from geopy.distance import geodesic
@@ -225,7 +225,7 @@ def reset_password_request():
 
 @main.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
-    user = verify_reset_token(token)  # Implement token verification
+    user = User.verify_reset_password_token(token)  # Implement token verification
     if not user:
         flash('Invalid or expired token', 'danger')
         return redirect(url_for('main.reset_password_request'))

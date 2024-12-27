@@ -15,18 +15,21 @@ from .utils import send_reset_email
 
 
 
+
 main = Blueprint('main', __name__)
 
 COMPANY_LOCATION = (7.130402
                     , 3.362196)  # Example: Lagos, Nigeria
 SIGN_IN_DEADLINE = time(8, 0)  # 9:00 AM
-SIGN_OUT_START_TIME = time(5, 0)  # 5:00 PM
+SIGN_OUT_START_TIME = time(1, 24)  # 5:00 PM
 
 def is_within_company_location(user_lat, user_lon):
     user_location = (user_lat, user_lon)
     distance = geodesic(COMPANY_LOCATION, user_location).meters
     print(f"User location: {user_location}, Company location: {COMPANY_LOCATION}, Distance: {distance} meters")
-    return distance <= 100  # Allow sign-in within 100 meters
+    return distance <= 100000  # Allow sign-in within 100 meters
+
+
 
 @main.route('/register', methods=['GET', 'POST'])
 def register():
@@ -156,6 +159,13 @@ def dashboard():
     late_status = None
     if record_today and record_today.sign_in_time:
         late_status = record_today.sign_in_time > SIGN_IN_DEADLINE
+        
+        # Calculate the distance from the user's current location to the company's location
+    user_lat = request.form.get('latitude', type=float)
+    user_lon = request.form.get('longitude', type=float)
+    user_location = (user_lat, user_lon)
+    distance = geodesic(COMPANY_LOCATION, user_location).meters
+    distance = round(distance, 2) 
 
     return render_template(
         'dashboard.html',
@@ -163,7 +173,9 @@ def dashboard():
         record_today=record_today,
         late_status=late_status,
         current_time=datetime.now().time(),
-        SIGN_OUT_START_TIME=SIGN_OUT_START_TIME
+        SIGN_OUT_START_TIME=SIGN_OUT_START_TIME,
+        COMPANY_LOCATION=COMPANY_LOCATION,  # Pass the company location
+        distance=distance  # Pass the calculated distance
     )
 
 

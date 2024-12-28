@@ -1,6 +1,29 @@
-{% extends "base.html" %} {% block title %} Dashboard {% endblock %} {% block
-content %}
+{% extends "base.html" %}
+{% block title %} Dashboard {% endblock %}
+{% block content %}
 <h1>Welcome, {{ current_user.name }}</h1>
+
+<!-- Search form for filtering records by month -->
+<div class="search-form-container">
+  <form method="GET" action="{{ url_for('main.dashboard') }}" class="form-inline mb-4">
+    <label for="month" class="mr-2">Select Month:</label>
+    <select name="month" id="month" class="form-control mr-2">
+      <option value="1" {% if request.args.get('month') == '1' %}selected{% endif %}>January</option>
+      <option value="2" {% if request.args.get('month') == '2' %}selected{% endif %}>February</option>
+      <option value="3" {% if request.args.get('month') == '3' %}selected{% endif %}>March</option>
+      <option value="4" {% if request.args.get('month') == '4' %}selected{% endif %}>April</option>
+      <option value="5" {% if request.args.get('month') == '5' %}selected{% endif %}>May</option>
+      <option value="6" {% if request.args.get('month') == '6' %}selected{% endif %}>June</option>
+      <option value="7" {% if request.args.get('month') == '7' %}selected{% endif %}>July</option>
+      <option value="8" {% if request.args.get('month') == '8' %}selected{% endif %}>August</option>
+      <option value="9" {% if request.args.get('month') == '9' %}selected{% endif %}>September</option>
+      <option value="10" {% if request.args.get('month') == '10' %}selected{% endif %}>October</option>
+      <option value="11" {% if request.args.get('month') == '11' %}selected{% endif %}>November</option>
+      <option value="12" {% if request.args.get('month') == '12' %}selected{% endif %}>December</option>
+    </select>
+    <button type="submit" class="btn btn-primary mt-1">Search</button>
+  </form>
+</div>
 
 {% if record_today %}
 <p>
@@ -9,8 +32,7 @@ content %}
   <span class="text-danger">You are late!</span>
   {% else %}
   <span class="text-success">You are on time.</span>
-  {% endif %} {% endif %} Today's Sign-Out Time: {{ record_today.sign_out_time
-  or "Not Signed Out" }}
+  {% endif %} {% endif %} Today's Sign-Out Time: {{ record_today.sign_out_time or "Not Signed Out" }}
 </p>
 {% endif %}
 
@@ -20,16 +42,11 @@ content %}
 <p id="userLocation">Fetching your location...</p>
 
 <p>
-  Company Geo-Location: Latitude: {{ COMPANY_LOCATION[0] }}, Longitude: {{
-  COMPANY_LOCATION[1] }}<br />
+  Company Geo-Location: Latitude: {{ COMPANY_LOCATION[0] }}, Longitude: {{ COMPANY_LOCATION[1] }}<br />
   You are {{ distance }} meters from the company.
 </p>
 
-<form
-  method="POST"
-  action="{{ url_for('main.sign_in') }}"
-  style="display: inline"
->
+<form method="POST" action="{{ url_for('main.sign_in') }}" style="display: inline">
   <input type="hidden" name="latitude" id="signInLatitude" />
   <input type="hidden" name="longitude" id="signInLongitude" />
   {% if not record_today or not record_today.sign_in_time %}
@@ -37,20 +54,15 @@ content %}
   {% endif %}
 </form>
 
-<form
-  method="POST"
-  action="{{ url_for('main.sign_out') }}"
-  style="display: inline"
->
+<form method="POST" action="{{ url_for('main.sign_out') }}" style="display: inline">
   <input type="hidden" name="latitude" id="signOutLatitude" />
   <input type="hidden" name="longitude" id="signOutLongitude" />
-  {% if record_today and record_today.sign_in_time and current_time >=
-  SIGN_OUT_START_TIME %}
+  {% if record_today and record_today.sign_in_time and current_time >= SIGN_OUT_START %}
   <button type="submit" class="btn btn-warning">Sign Out</button>
   {% endif %}
 </form>
 
-<h2>Attendance Records for the Month</h2>
+<h2>Attendance Records for the Selected Month</h2>
 <table class="table">
   <thead>
     <tr>
@@ -58,15 +70,17 @@ content %}
       <th>Sign-In Time</th>
       <th>Sign-Out Time</th>
       <th>Geo-Location</th>
+      <th>STATUS</th>
     </tr>
   </thead>
   <tbody>
-    {% for record in records %}
+    {% for record in filtered_records %}
     <tr>
       <td>{{ record.date }}</td>
       <td>{{ record.sign_in_time or "Not Signed In" }}</td>
       <td>{{ record.sign_out_time or "Not Signed Out" }}</td>
       <td>{{ record.geo_location }}</td>
+      <td>{% if record.auto_signed_out %}Automatically Signed Out{% else %}Manual Sign-Out{% endif %}</td>
     </tr>
     {% endfor %}
   </tbody>
@@ -75,78 +89,52 @@ content %}
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     const userLocation = document.getElementById("userLocation");
-    const signInForm = document.querySelector(
-      "form[action='{{ url_for('main.sign_in') }}']"
-    );
-    const signOutForm = document.querySelector(
-      "form[action='{{ url_for('main.sign_out') }}']"
-    );
+    const signInForm = document.querySelector("form[action='{{ url_for('main.sign_in') }}']");
+    const signOutForm = document.querySelector("form[action='{{ url_for('main.sign_out') }}']");
 
     function showNotification(message, type) {
       const notification = document.getElementById("notification");
       notification.textContent = message;
-      notification.className = `alert alert-${type}`; // Bootstrap classes: 'alert-success', 'alert-danger', etc.
+      notification.className = `alert alert-${type}`;
       notification.style.display = "block";
 
-      // Hide notification after 5 seconds
       setTimeout(() => {
         notification.style.display = "none";
       }, 5000);
     }
 
     function fetchGeolocationAndSubmit(event, form, latitudeId, longitudeId) {
-      event.preventDefault(); // Prevent the default form submission
+      event.preventDefault();
 
       if (!navigator.geolocation) {
-        showNotification(
-          "Geolocation is not supported by your browser.",
-          "danger"
-        );
+        showNotification("Geolocation is not supported by your browser.", "danger");
         return;
       }
 
       navigator.geolocation.getCurrentPosition(
         function (position) {
           document.getElementById(latitudeId).value = position.coords.latitude;
-          document.getElementById(longitudeId).value =
-            position.coords.longitude;
+          document.getElementById(longitudeId).value = position.coords.longitude;
 
-          console.log(
-            "Latitude:",
-            position.coords.latitude,
-            "Longitude:",
-            position.coords.longitude
-          ); // Debugging log
+          showNotification("Location retrieved successfully. Submitting form...", "success");
 
-          showNotification(
-            "Location retrieved successfully. Submitting form...",
-            "success"
-          );
-
-          form.submit(); // Submit the form after setting coordinates
+          form.submit();
         },
         function (error) {
           let message = "";
-
           switch (error.code) {
             case error.PERMISSION_DENIED:
-              message =
-                "Location permission was denied. Please enable it in your browser settings and try again.";
+              message = "Location permission was denied.";
               break;
             case error.POSITION_UNAVAILABLE:
-              message =
-                "Your location is currently unavailable. Please check your device settings or move to an area with better coverage.";
+              message = "Your location is currently unavailable.";
               break;
             case error.TIMEOUT:
-              message =
-                "The request to fetch your location timed out. Please try again.";
+              message = "The request to fetch your location timed out.";
               break;
             default:
-              message =
-                "An unknown error occurred while fetching your location.";
+              message = "An unknown error occurred.";
           }
-
-          console.error("Geolocation error:", message);
           showNotification(message, "danger");
         },
         { enableHighAccuracy: true, timeout: 10000 }
@@ -155,40 +143,24 @@ content %}
 
     if (signInForm) {
       signInForm.addEventListener("submit", function (event) {
-        fetchGeolocationAndSubmit(
-          event,
-          signInForm,
-          "signInLatitude",
-          "signInLongitude"
-        );
+        fetchGeolocationAndSubmit(event, signInForm, "signInLatitude", "signInLongitude");
       });
     }
 
     if (signOutForm) {
       signOutForm.addEventListener("submit", function (event) {
-        fetchGeolocationAndSubmit(
-          event,
-          signOutForm,
-          "signOutLatitude",
-          "signOutLongitude"
-        );
+        fetchGeolocationAndSubmit(event, signOutForm, "signOutLatitude", "signOutLongitude");
       });
     }
 
-    // Fetch and display user's geo-location
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        function (position) {
-          userLocation.innerHTML = `Latitude: ${position.coords.latitude}<br />Longitude: ${position.coords.longitude}`;
-        },
-        function () {
-          userLocation.textContent =
-            "Unable to retrieve your location. Please enable location services.";
-        }
-      );
+      navigator.geolocation.getCurrentPosition(function (position) {
+        userLocation.innerHTML = `Latitude: ${position.coords.latitude}<br />Longitude: ${position.coords.longitude}`;
+      }, function () {
+        userLocation.textContent = "Unable to retrieve your location.";
+      });
     } else {
-      userLocation.textContent =
-        "Geolocation is not supported by your browser.";
+      userLocation.textContent = "Geolocation is not supported by your browser.";
     }
   });
 </script>
@@ -207,6 +179,18 @@ content %}
     background-color: #f8d7da;
     color: #721c24;
   }
+
+  .search-form-container {
+    position: absolute;
+    top: 100px;
+    right: 0px;
+    z-index: 1000;
+  }
+
+  .search-form-container form {
+    width: 200px;  /* Adjust this value to reduce the width */
+  }
+
 </style>
 
 {% endblock %}

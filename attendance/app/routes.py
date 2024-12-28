@@ -29,15 +29,27 @@ def register():
     form = RegistrationForm()
     if form.validate_on_submit():
         try:
-            user = User(email=form.email.data, name=form.name.data, password=form.password.data)
+            # Check if the current user is logged in and is an admin
+            if current_user.is_authenticated and current_user.is_admin:
+                role = form.role.data  # Admin can choose the role
+            else:
+                role = 'user'  # Default role for self-registration
+
+            user = User(
+                email=form.email.data,
+                name=form.name.data,
+                password=form.password.data,
+                role=role
+            )
             db.session.add(user)
             db.session.commit()
-            flash('You have successfully registered', 'success')
+            flash('You have successfully registered.', 'success')
             return redirect(url_for('main.login'))
         except IntegrityError:
             db.session.rollback()
-            flash('Email already exists', 'warning')
+            flash('Email already exists.', 'warning')
     return render_template('register.html', form=form)
+
 
 # Route for user login
 @main.route('/login', methods=['GET', 'POST'])

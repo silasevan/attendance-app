@@ -30,6 +30,15 @@ class RegistrationForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired(), validate_secure_password])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
+    
+    # This field is visible only to admin users
+    role = SelectField(
+        'Role',
+        choices=[('user', 'User'), ('admin', 'Admin')],
+        validators=[DataRequired()],
+        default='user'
+    )
+    
     submit = SubmitField('Register')
     
     

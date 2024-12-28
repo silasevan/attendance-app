@@ -185,26 +185,7 @@ def admin_dashboard():
     all_records = AttendanceRecord.query.order_by(AttendanceRecord.date.desc()).all()
     return render_template('admin_dashboard.html', records=all_records)
 
-# Route for admin user registration
-@main.route('/admin/register', methods=['GET', 'POST'])
-@login_required
-def admin_register_user():
-    if current_user.role != 'admin':
-        flash('Access restricted to admins only.', 'danger')
-        return redirect(url_for('main.dashboard'))
-    
-    form = RegistrationForm()
-    if form.validate_on_submit():
-        try:
-            new_user = User(email=form.email.data, name=form.name.data, password=form.password.data)
-            db.session.add(new_user)
-            db.session.commit()
-            flash('New user successfully registered!', 'success')
-            return redirect(url_for('main.admin_dashboard'))
-        except IntegrityError:
-            db.session.rollback()
-            flash('Email already exists!', 'danger')
-    return render_template('admin_register.html', form=form)
+
 
 # Route for password reset request
 @main.route('/reset-password-request', methods=['GET', 'POST'])
@@ -235,3 +216,81 @@ def reset_password(token):
         flash('Your password has been updated!', 'success')
         return redirect(url_for('main.login'))
     return render_template('reset_password.html', form=form)
+
+
+
+
+
+
+@main.route('/register-admin', methods=['GET', 'POST'])
+@login_required
+def register_admin():
+    if not current_user.is_admin:
+        flash('Access denied. Only admins can register new admins.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        password = request.form.get('password')
+
+        # Check if email already exists
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            flash('Email is already registered.', 'danger')
+            return redirect(url_for('main.register_admin'))
+
+        # Create a new admin user
+        admin_user = User(
+            name=name,
+            email=email,
+            password_hash=generate_password_hash(password),
+            is_admin=True
+        )
+        db.session.add(admin_user)
+        db.session.commit()
+
+        flash(f'Admin {name} registered successfully!', 'success')
+        return redirect(url_for('main.dashboard'))
+
+    return render_template('register_admin.html')
+
+
+
+
+@main.route('/admin/attendance-records', methods=['GET', 'POST'])
+@login_required
+def admin_attendance_records():
+    if not current_user.is_admin:
+        flash('Access denied. Only admins can view attendance records.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    # Get query parameters
+    search_query = request.args.get('search', '').strip()
+    date_filter = request.args.get('date', '')
+    sign_in_status = request.args.get('sign_in_status', '')
+    sign_out_status = request.args.get('sign_out_status', '')
+
+    # Query attendance records
+    query = AttendanceRecord.query.join(User).order_by(AttendanceRecord.date.desc())
+
+    # Apply filters
+    if search_query:
+        query = query.filter(
+            (User.name.ilike(f'%{search_query}%')) | (User.email.ilike(f'%{search_query}%'))
+        )
+    if date_filter:
+        query = query.filter(AttendanceRecord.date == date_filter)
+    if sign_in_status == 'signed_in':
+        query = query.filter(AttendanceRecord.sign_in_time.isnot(None))
+    elif sign_in_status == 'not_signed_in':
+        query = query.filter(AttendanceRecord.sign_in_time.is_(None))
+    if sign_out_status == 'signed_out':
+        query = query.filter(AttendanceRecord.sign_out_time.isnot(None))
+    elif sign_out_status == 'not_signed_out':
+        query = query.filter(AttendanceRecord.sign_out_time.is_(None))
+
+    records = query.all()
+
+    return render_template('admin_attendance_records.html', records=records)
+

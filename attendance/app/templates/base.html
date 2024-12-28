@@ -11,24 +11,67 @@
   </head>
   <body>
     <!-- Fixed Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+    <nav
+      class="navbar navbar-expand-lg navbar-light bg-light fixed-top shadow-sm"
+    >
       <div class="container-fluid">
-        <a class="navbar-brand" href="{{ url_for('main.dashboard') }}">Attendance App</a>
-        
+        <a
+          class="navbar-brand fw-bold text-primary"
+          href="{{ url_for('main.dashboard') }}"
+        >
+          Attendance App
+        </a>
+
         <!-- Hamburger Toggle Button (visible on mobile) -->
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
           <span class="navbar-toggler-icon"></span>
         </button>
-        
+
         <!-- Navbar Links -->
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             {% if current_user.is_authenticated %}
-            <li><a href="{{ url_for('main.dashboard') }}" class="nav-link">Dashboard</a></li>
-            <li><a href="{{ url_for('main.logout') }}" class="nav-link">Logout</a></li>
+            <li class="nav-item">
+              <a href="{{ url_for('main.dashboard') }}" class="nav-link"
+                >Dashboard</a
+              >
+            </li>
+            <li class="nav-item">
+              <a href="{{ url_for('main.logout') }}" class="nav-link">Logout</a>
+            </li>
             {% else %}
-            <li><a href="{{ url_for('main.login') }}" class="nav-link">Login</a></li>
-            <li><a href="{{ url_for('main.register') }}" class="nav-link">Register</a></li>
+            <li class="nav-item">
+              <a href="{{ url_for('main.login') }}" class="nav-link">Login</a>
+            </li>
+            <li class="nav-item">
+              <a href="{{ url_for('main.register') }}" class="nav-link"
+                >Register</a
+              >
+            </li>
+            {% endif %}
+
+            <!-- Admin-Specific Links -->
+            {% if current_user.is_authenticated and current_user.is_admin %}
+            <li class="nav-item">
+              <a href="{{ url_for('main.register_admin') }}" class="nav-link"
+                >Register Admin</a
+              >
+            </li>
+            <li class="nav-item">
+              <a
+                href="{{ url_for('main.admin_attendance_records') }}"
+                class="nav-link"
+                >View All Records</a
+              >
+            </li>
             {% endif %}
           </ul>
         </div>
@@ -36,25 +79,38 @@
     </nav>
 
     <!-- Flash Messages -->
-    <div class="container mt-5 pt-5 w-50 d-flex justify-content-center">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
+    <div class="container mt-5 pt-5">
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %}
+      <div class="row justify-content-center">
+        <div class="col-md-8">
           {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          <div
+            class="alert alert-{{ category }} alert-dismissible fade show"
+            role="alert"
+          >
             {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="alert"
+              aria-label="Close"
+            ></button>
           </div>
           {% endfor %}
-        {% endif %}
-      {% endwith %}
+        </div>
+      </div>
+      {% endif %} {% endwith %}
     </div>
 
     <!-- Content -->
     <div class="container mt-3">{% block content %}{% endblock %}</div>
 
     <!-- Footer -->
-    <footer class="bg-light text-center py-3 mt-5">
-      <p>&copy; 2024 Attendance App. All Rights Reserved.</p>
+    <footer class="bg-light text-center py-3 mt-5 border-top">
+      <p class="mb-0">
+        &copy; 2024 <strong>Attendance App</strong>. All Rights Reserved.
+      </p>
     </footer>
 
     <!-- Bootstrap JS (Includes Bootstrap bundle with Popper.js for the navbar toggle) -->

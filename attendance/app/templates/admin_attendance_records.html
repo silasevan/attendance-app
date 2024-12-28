@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %} Attendance Records {% endblock %}
+{% block content %}
+<h2>All Attendance Records</h2>
+
+<!-- Search and Filter Form -->
+<form method="GET" action="{{ url_for('main.admin_attendance_records') }}" class="mb-4">
+    <div class="form-row">
+        <div class="col">
+            <input
+                type="text"
+                name="search"
+                class="form-control"
+                placeholder="Search by name or email"
+                value="{{ request.args.get('search', '') }}"
+            />
+        </div>
+        <div class="col">
+            <input
+                type="date"
+                name="date"
+                class="form-control"
+                value="{{ request.args.get('date', '') }}"
+            />
+        </div>
+        <div class="col">
+            <select name="sign_in_status" class="form-control">
+                <option value="">Sign-In Status</option>
+                <option value="signed_in" {% if request.args.get('sign_in_status') == 'signed_in' %}selected{% endif %}>
+                    Signed In
+                </option>
+                <option value="not_signed_in" {% if request.args.get('sign_in_status') == 'not_signed_in' %}selected{% endif %}>
+                    Not Signed In
+                </option>
+            </select>
+        </div>
+        <div class="col">
+            <select name="sign_out_status" class="form-control">
+                <option value="">Sign-Out Status</option>
+                <option value="signed_out" {% if request.args.get('sign_out_status') == 'signed_out' %}selected{% endif %}>
+                    Signed Out
+                </option>
+                <option value="not_signed_out" {% if request.args.get('sign_out_status') == 'not_signed_out' %}selected{% endif %}>
+                    Not Signed Out
+                </option>
+            </select>
+        </div>
+        <div class="col">
+            <button type="submit" class="btn btn-primary">Search & Filter</button>
+        </div>
+    </div>
+</form>
+
+<!-- Attendance Records Table -->
+<table class="table">
+    <thead>
+        <tr>
+            <th>User</th>
+            <th>Date</th>
+            <th>Sign-In Time</th>
+            <th>Sign-Out Time</th>
+            <th>Geo-Location</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for record in records %}
+        <tr>
+            <td>{{ record.user.name }}</td>
+            <td>{{ record.date }}</td>
+            <td>{{ record.sign_in_time or "Not Signed In" }}</td>
+            <td>{{ record.sign_out_time or "Not Signed Out" }}</td>
+            <td>{{ record.geo_location }}</td>
+            <td>
+                {% if record.auto_signed_out %}
+                Automatically Signed Out
+                {% else %}
+                Manual Sign-Out
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if not records %}
+<p>No records found for the given filters.</p>
+{% endif %}
+
+{% endblock %}

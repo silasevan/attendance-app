@@ -25,22 +25,16 @@ class LoginForm(FlaskForm):
     submit = SubmitField('Login')
     
     
+from wtforms import SelectField
+
 class RegistrationForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired(), validate_secure_password])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
-    
-    # This field is visible only to admin users
-    role = SelectField(
-        'Role',
-        choices=[('user', 'User'), ('admin', 'Admin')],
-        validators=[DataRequired()],
-        default='user'
-    )
-    
+    role = SelectField('Role', choices=[('user', 'User'), ('admin', 'Admin')], validators=[DataRequired()])
     submit = SubmitField('Register')
-    
+
     
     
     

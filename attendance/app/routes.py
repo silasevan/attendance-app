@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request,abort
 from flask_login import login_required, current_user, login_user, logout_user
 from sqlalchemy.exc import IntegrityError
 from geopy.distance import geodesic
@@ -7,6 +7,7 @@ from . import db
 from .models import User, AttendanceRecord
 from .forms import LoginForm, RegistrationForm, PasswordResetRequestForm, ResetPasswordForm
 from .utils import send_reset_email
+from functools import wraps
 
 main = Blueprint('main', __name__)
 
@@ -23,32 +24,32 @@ def is_within_company_location(user_lat, user_lon):
     print(f"User location: {user_location}, Company location: {COMPANY_LOCATION}, Distance: {distance} meters")
     return distance <= 100000  # Allow sign-in within 100 meters
 
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role != 'admin':
+            abort(403)  # Forbidden
+        return f(*args, **kwargs)
+    return decorated_function
+
 # Route for user registration
+
 @main.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegistrationForm()
     if form.validate_on_submit():
         try:
-            # Check if the current user is logged in and is an admin
-            if current_user.is_authenticated and current_user.is_admin:
-                role = form.role.data  # Admin can choose the role
-            else:
-                role = 'user'  # Default role for self-registration
-
-            user = User(
-                email=form.email.data,
-                name=form.name.data,
-                password=form.password.data,
-                role=role
-            )
+            role = form.role.data  # Get role from form
+            user = User(email=form.email.data, name=form.name.data, password=form.password.data, role=role)
             db.session.add(user)
             db.session.commit()
-            flash('You have successfully registered.', 'success')
+            flash(f'Successfully registered as a {role}!', 'success')
             return redirect(url_for('main.login'))
         except IntegrityError:
             db.session.rollback()
             flash('Email already exists.', 'warning')
     return render_template('register.html', form=form)
+
 
 
 # Route for user login
@@ -271,7 +272,7 @@ def register_admin():
 
 
 @main.route('/admin/attendance-records', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def admin_attendance_records():
     if not current_user.is_admin:
         flash('Access denied. Only admins can view attendance records.', 'danger')

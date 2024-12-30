@@ -6,6 +6,7 @@ def render_error_page(error_code, message=None):
     elif error_code == 404:
         message = message or "The page you are looking for does not exist."
     elif error_code == 500:
+        db.session.rollback()
         message = message or "An internal server error occurred."
     
-    return render_template(f"error/{error_code}.html", message=message), error_code
+    return render_template(f"errors/{error_code}.html", message=message), error_code

@@ -8,6 +8,7 @@ from .models import User, AttendanceRecord
 from .forms import LoginForm, RegistrationForm, PasswordResetRequestForm, ResetPasswordForm
 from .utils import send_reset_email
 from functools import wraps
+from .error import render_error_page
 
 main = Blueprint('main', __name__)
 
@@ -22,13 +23,13 @@ def is_within_company_location(user_lat, user_lon):
     user_location = (user_lat, user_lon)
     distance = geodesic(COMPANY_LOCATION, user_location).meters
     print(f"User location: {user_location}, Company location: {COMPANY_LOCATION}, Distance: {distance} meters")
-    return distance <= 100000  # Allow sign-in within 100 meters
+    return distance <= 100  # Allow sign-in within 100 meters
 
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or current_user.role != 'admin':
-            abort(403)  # Forbidden
+           return render_error_page(403)
         return f(*args, **kwargs)
     return decorated_function
 
@@ -53,7 +54,7 @@ def register():
 
 
 # Route for user login
-@main.route('/login', methods=['GET', 'POST'])
+@main.route('/', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
     if form.validate_on_submit():

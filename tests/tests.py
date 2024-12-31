@@ -1,56 +1,127 @@
 import unittest
-from attendance import create_app, db
-from flask_login import current_user
+from flask import Flask
+from flask_testing import TestCase
+from flask_login import login_user, current_user
+from app import create_app, db
+from app.models import User, AttendanceRecord
+from app.routes import main
+
 
 class TestRoutes(unittest.TestCase):
+    
+    def create_app(self):
+        app = create_app(config_object="testing")  # Use the testing config
+        app.register_blueprint(main)  # Register blueprint to app
+        return app
+
     def setUp(self):
-        # Configure the app for testing
-        self.app = create_app()
-        self.app.config['TESTING'] = True
-        self.app.config['WTF_CSRF_ENABLED'] = False
-        self.app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+        # Create app and use a test configuration (if needed)
+        self.app = create_app('testing')  # Adjust based on your app's config
         self.client = self.app.test_client()
 
-        # Initialize the database
+        # Push the app context
         with self.app.app_context():
+            # Set up the database
             db.create_all()
 
     def tearDown(self):
-        # Clean up database after each test
-        with self.app.app_context():
-            db.session.remove()
-            db.drop_all()
+        """ Rollback the database after each test. """
+        db.session.remove()
+        db.drop_all()
 
-    def test_home_route(self):
-        response = self.client.get('/')
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'Welcome to the Attendance App', response.data)
+    def test_register_user(self):
+        """ Test the registration route. """
+        response = self.client.post('/register', data=dict(
+            email='newuser@example.com',
+            name='New User',
+            password='password123',
+            role='user'
+        ), follow_redirects=True)
+        
+        # Assert successful registration and redirect to login page
+        self.assertIn(b'Successfully registered as a user!', response.data)
+        self.assertRedirects(response, '/login')
 
-    def test_register_route(self):
-        response = self.client.get('/register')
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'Register', response.data)
+    def test_login_user(self):
+        """ Test user login route. """
+        response = self.client.post('/login', data=dict(
+            email='testuser@example.com',
+            password='password123'
+        ), follow_redirects=True)
 
-    def test_register_post(self):
-        response = self.client.post('/register', data={
-            'name': 'John Doe',
-            'email': 'john@example.com',
-            'password': 'Password123!',
-            'confirm_password': 'Password123!',
-            'role': 'user'
-        }, follow_redirects=True)
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'You have successfully registered', response.data)
+        # Assert login successful
+        self.assertIn(b'You have successfully logged in', response.data)
+        self.assertRedirects(response, '/dashboard')
 
-    def test_login_route(self):
-        response = self.client.get('/login')
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'Login', response.data)
+    def test_sign_in(self):
+        """ Test user sign-in route within company location. """
+        response = self.client.post('/sign-in', data=dict(
+            latitude=7.130400,
+            longitude=3.362200
+        ), follow_redirects=True)
 
-    def test_custom_404_error(self):
-        response = self.client.get('/nonexistent_route')
-        self.assertEqual(response.status_code, 404)
-        self.assertIn(b"Oops! The page you're looking for doesn't exist.", response.data)
+        # Check for successful sign-in
+        self.assertIn(b'Sign-in successful!', response.data)
+
+    def test_sign_out(self):
+        """ Test user sign-out route after sign-in. """
+        # First, simulate sign-in
+        self.client.post('/sign-in', data=dict(
+            latitude=7.130400,
+            longitude=3.362200
+        ))
+
+        # Now, test sign-out
+        response = self.client.post('/sign-out', data=dict(
+            latitude=7.130400,
+            longitude=3.362200
+        ), follow_redirects=True)
+
+        self.assertIn(b'Sign-out successful!', response.data)
+
+    def test_admin_dashboard_access(self):
+        """ Test access to the admin dashboard for non-admin user. """
+        # Simulate login for non-admin user
+        login_user(self.test_user)
+        
+        response = self.client.get('/admin', follow_redirects=True)
+        self.assertIn(b'Access restricted to admins only.', response.data)
+
+    def test_admin_attendance_records(self):
+        """ Test the admin can access attendance records. """
+        # Set up an admin user
+        admin_user = User(email="admin@example.com", name="Admin User", password="adminpass", role="admin")
+        db.session.add(admin_user)
+        db.session.commit()
+
+        # Simulate admin login
+        login_user(admin_user)
+
+        # Add an attendance record for the user
+        attendance = AttendanceRecord(user_id=self.test_user.id, date="2024-12-31", geo_location="7.130400,3.362200")
+        db.session.add(attendance)
+        db.session.commit()
+
+        # Test admin access to attendance records
+        response = self.client.get('/admin/attendance-records', follow_redirects=True)
+        self.assertIn(b'admin@example.com', response.data)
+
+    def test_password_reset_request(self):
+        """ Test password reset request functionality. """
+        response = self.client.post('/reset-password-request', data=dict(
+            email='testuser@example.com'
+        ), follow_redirects=True)
+        
+        self.assertIn(b'Check your email for the instructions to reset your password.', response.data)
+
+    def test_password_reset(self):
+        """ Test password reset functionality. """
+        # Generate a token for reset (mocking real functionality)
+        token = 'valid_reset_token'
+        response = self.client.get(f'/reset-password/{token}', follow_redirects=True)
+
+        # Assert password reset page is loaded
+        self.assertIn(b'Your password has been updated!', response.data)
 
 if __name__ == '__main__':
     unittest.main()

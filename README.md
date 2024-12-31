@@ -29,7 +29,7 @@ This project is a web-based attendance management system. It allows users to reg
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/yourusername/attendance-app.git
+   git clone https://github.com/silasevan/attendance-app.git
    cd attendance-app
    ```
 
